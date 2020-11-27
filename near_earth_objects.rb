@@ -1,6 +1,7 @@
 require 'faraday'
 require 'figaro'
 require 'pry'
+require 'json'
 # Load ENV vars via Figaro
 Figaro.application = Figaro::Application.new(environment: 'production', path: File.expand_path('../config/application.yml', __FILE__))
 Figaro.load
@@ -23,7 +24,7 @@ class NearEarthObjects
     formatted_asteroid_data = parsed_asteroids_data.map do |astroid|
       {
         name: astroid[:name],
-        diameter: "#{astroid[:estimated_diameter][:feet][:estimated_diameter_max].to_i} ft",
+        diameter: "#{diameter(astroid)} ft",
         miss_distance: "#{astroid[:close_approach_data][0][:miss_distance][:miles].to_i} miles"
       }
     end
@@ -33,5 +34,9 @@ class NearEarthObjects
       biggest_astroid: largest_astroid_diameter,
       total_number_of_astroids: total_number_of_astroids
     }
+  end
+
+  def self.diameter(astroid)
+    astroid[:estimated_diameter][:feet][:estimated_diameter_max].to_i
   end
 end
