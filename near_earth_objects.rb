@@ -12,42 +12,48 @@ class NearEarthObjects
     @asteroids_data = parse_asteroids_data
   end
 
-  def parse_asteroids_data
-    asteroids_list_data = connect_api(date).get('/neo/rest/v1/feed')
-
-    JSON.parse(asteroids_list_data.body, symbolize_names: true)[:near_earth_objects][:"#{date}"]
-  end
-
-  def find_neos_info
-    largest_astroid_diameter = parsed_asteroids_data.map do |astroid|
-      astroid[:estimated_diameter][:feet][:estimated_diameter_max].to_i
-    end.max { |a,b| a<=> b}
-
-    total_number_of_astroids = parsed_asteroids_data.count
-
-    formatted_asteroid_data = parsed_asteroids_data.map do |astroid|
-      {
-        name: astroid[:name],
-        diameter: "#{diameter(astroid)} ft",
-        miss_distance: "#{astroid[:close_approach_data][0][:miss_distance][:miles].to_i} miles"
-      }
-    end
-
-    {
-      astroid_list: formatted_asteroid_data,
-      biggest_astroid: largest_astroid_diameter,
-      total_number_of_astroids: total_number_of_astroids
-    }
-  end
-
-  def self.connect_api(date)
+  def connect_api
     Faraday.new(
       url: 'https://api.nasa.gov',
-      params: { start_date: date, api_key: ENV['nasa_api_key']}
+      params: { start_date: @date, api_key: ENV['nasa_api_key']}
     )
   end
 
-  def self.diameter(astroid)
-    astroid[:estimated_diameter][:feet][:estimated_diameter_max].to_i
+  def parse_asteroids_data
+    asteroids_list_data = connect_api.get('/neo/rest/v1/feed')
+
+    JSON.parse(asteroids_list_data.body, symbolize_names: true)[:near_earth_objects][:"#{@date}"]
+  end
+
+  def format_asteroid_data
+    @asteroids_data.map do |asteroid|
+      {
+        name: asteroid[:name],
+        diameter: "#{diameter(asteroid)} ft",
+        miss_distance: "#{miss_distance(asteroid)} miles"
+      }
+    end
+  end
+
+  def diameter(asteroid)
+    asteroid[:estimated_diameter][:feet][:estimated_diameter_max].to_i
+  end
+
+  def miss_distance(asteroid)
+    asteroid[:close_approach_data][0][:miss_distance][:miles].to_i
+  end
+
+  def find_neos_info
+    {
+      asteroid_list: format_asteroid_data,
+      biggest_asteroid: largest_asteroid,
+      total_number_of_asteroids: @asteroids_data.count
+    }
+  end
+
+  def largest_asteroid
+    @asteroids_data.max do |asteroid_a, asteroid_b|
+      diameter(asteroid_a) <=> diameter(asteroid_b)
+    end
   end
 end
